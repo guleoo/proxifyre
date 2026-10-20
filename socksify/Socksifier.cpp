@@ -274,6 +274,15 @@ IntPtr Socksifier::Socksifier::AddSocks5Proxy(String^ endpoint, String^ username
     SupportedProtocolsEnum protocols, SupportedAddressFamiliesEnum addressFamilies, Socks5TransportEnum transport,
     String^ tlsServerName, String^ tlsPinnedSha256, const bool tlsAllowInvalidCertificate, const bool start)
 {
+    return AddSocks5Proxy(endpoint, username, password, protocols, addressFamilies, transport,
+        tlsServerName, tlsPinnedSha256, tlsAllowInvalidCertificate, start, false);
+}
+
+IntPtr Socksifier::Socksifier::AddSocks5Proxy(String^ endpoint, String^ username, String^ password,
+    SupportedProtocolsEnum protocols, SupportedAddressFamiliesEnum addressFamilies, Socks5TransportEnum transport,
+    String^ tlsServerName, String^ tlsPinnedSha256, const bool tlsAllowInvalidCertificate, const bool start,
+    const bool proxyDns)
+{
     if (!unmanaged_ptr_)
         return static_cast<IntPtr>(-1);
 
@@ -337,7 +346,8 @@ IntPtr Socksifier::Socksifier::AddSocks5Proxy(String^ endpoint, String^ username
             transport_mx,
             tls_server_name_mx,
             tls_pinned_sha256_mx,
-            tlsAllowInvalidCertificate
+            tlsAllowInvalidCertificate,
+            proxyDns
         ));
     }
 
@@ -351,7 +361,8 @@ IntPtr Socksifier::Socksifier::AddSocks5Proxy(String^ endpoint, String^ username
         transport_mx,
         tls_server_name_mx,
         tls_pinned_sha256_mx,
-        tlsAllowInvalidCertificate));
+        tlsAllowInvalidCertificate,
+        proxyDns));
 }
 
 /// <summary>

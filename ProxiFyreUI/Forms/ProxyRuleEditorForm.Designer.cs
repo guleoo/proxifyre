@@ -26,6 +26,7 @@ namespace ProxiFyreUI.Forms
         private System.Windows.Forms.GroupBox trafficGroupBox;
         private System.Windows.Forms.CheckBox tcpCheckBox;
         private System.Windows.Forms.CheckBox udpCheckBox;
+        private System.Windows.Forms.CheckBox proxyDnsCheckBox;
         private System.Windows.Forms.CheckBox ipv4CheckBox;
         private System.Windows.Forms.CheckBox ipv6CheckBox;
         private System.Windows.Forms.Label trafficNoteLabel;
@@ -77,6 +78,7 @@ namespace ProxiFyreUI.Forms
             this.ipv6CheckBox = new System.Windows.Forms.CheckBox();
             this.ipv4CheckBox = new System.Windows.Forms.CheckBox();
             this.udpCheckBox = new System.Windows.Forms.CheckBox();
+            this.proxyDnsCheckBox = new System.Windows.Forms.CheckBox();
             this.tcpCheckBox = new System.Windows.Forms.CheckBox();
             this.transportGroupBox = new System.Windows.Forms.GroupBox();
             this.tlsWarningLabel = new System.Windows.Forms.Label();
@@ -258,6 +260,7 @@ namespace ProxiFyreUI.Forms
             this.trafficGroupBox.Controls.Add(this.trafficNoteLabel);
             this.trafficGroupBox.Controls.Add(this.ipv6CheckBox);
             this.trafficGroupBox.Controls.Add(this.ipv4CheckBox);
+            this.trafficGroupBox.Controls.Add(this.proxyDnsCheckBox);
             this.trafficGroupBox.Controls.Add(this.udpCheckBox);
             this.trafficGroupBox.Controls.Add(this.tcpCheckBox);
             this.trafficGroupBox.Location = new System.Drawing.Point(12, 344);
@@ -298,6 +301,14 @@ namespace ProxiFyreUI.Forms
             this.ipv6CheckBox.Text = "IPv6";
             this.ipv6CheckBox.UseVisualStyleBackColor = true;
             this.ipv6CheckBox.CheckedChanged += new System.EventHandler(this.AddressFamilySelectionChanged);
+            this.proxyDnsCheckBox.AutoSize = true;
+            this.proxyDnsCheckBox.Location = new System.Drawing.Point(12, 48);
+            this.proxyDnsCheckBox.Name = "proxyDnsCheckBox";
+            this.proxyDnsCheckBox.Size = new System.Drawing.Size(460, 19);
+            this.proxyDnsCheckBox.TabIndex = 5;
+            this.proxyDnsCheckBox.Text = "Proxy DNS (UDP port 53; requires upstream UDP support)";
+            this.proxyDnsCheckBox.UseVisualStyleBackColor = true;
+            this.proxyDnsCheckBox.CheckedChanged += new System.EventHandler(this.FieldChanged);
             this.trafficNoteLabel.AutoSize = true;
             this.trafficNoteLabel.ForeColor = System.Drawing.SystemColors.GrayText;
             this.trafficNoteLabel.Location = new System.Drawing.Point(313, 26);

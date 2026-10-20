@@ -86,6 +86,8 @@ The GUI edits `app-config.json` beside `ProxiFyre.exe`. A minimal configuration 
 
 Rules are evaluated from top to bottom and the first match wins. Put the catch-all rule (`"appNames": [""]`) last; exclusions take priority over every routing rule. Unsupported destination address families are blocked rather than allowed to leak directly.
 
+UDP port 53 bypasses proxying by default. Set `"proxyDns": true` on a routing rule to opt into DNS forwarding through its SOCKS5 proxy; both the rule and the upstream must support UDP. See [DNS forwarding](docs/configuration.md#dns-forwarding).
+
 See the [configuration reference](docs/configuration.md) for matching rules, authentication, LAN bypass, logging, TLS options, and complete examples. The repository also includes a ready-to-edit [sample configuration](app-config.sample.json).
 
 ## Windows GUI

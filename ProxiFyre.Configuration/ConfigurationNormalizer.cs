@@ -72,6 +72,7 @@ namespace ProxiFyre.Configuration
                 TlsServerName = rule.TlsServerName == null ? null : rule.TlsServerName.Trim(),
                 TlsPinnedSha256 = NormalizeOptionalFingerprint(rule.TlsPinnedSha256),
                 TlsAllowInvalidCertificate = rule.TlsAllowInvalidCertificate,
+                ProxyDns = rule.ProxyDns,
                 SupportedProtocols = CanonicalizeList(rule.SupportedProtocols, new[] { "TCP", "UDP" }),
                 SupportedAddressFamilies = CanonicalizeList(rule.SupportedAddressFamilies, new[] { "IPv4", "IPv6" }),
                 ExtensionData = CloneExtensionData(rule.ExtensionData)

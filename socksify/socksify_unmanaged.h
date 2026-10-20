@@ -100,7 +100,8 @@ public:
         socks5_transport_mx transport = socks5_transport_mx::tcp,
         const std::string& tls_server_name = "",
         const std::string& tls_pinned_cert_sha256 = "",
-        bool tls_allow_invalid_certificate = false
+        bool tls_allow_invalid_certificate = false,
+        bool proxy_dns = false
     ) const;
 
     /**

@@ -12,6 +12,23 @@ namespace ProxiFyre.Tests
         private readonly ConfigurationSerializer _serializer = new ConfigurationSerializer();
 
         [Test]
+        public void DnsProxyIsOptInAndSurvivesEditingAndNormalization()
+        {
+            var legacy = _serializer.Deserialize(@"{""proxies"":[{""appNames"":[""app.exe""]}]}");
+            Assert.That(legacy.Proxies[0].ProxyDns, Is.False);
+            legacy.Proxies[0].ProxyDns = true;
+            var cloned = _serializer.CloneRule(legacy.Proxies[0]);
+            Assert.That(cloned.ProxyDns, Is.True);
+            var normalized = new ConfigurationNormalizer().NormalizeRule(cloned);
+            Assert.That(normalized.ProxyDns, Is.True);
+            legacy.Proxies[0] = normalized;
+            var roundTrip = _serializer.Deserialize(_serializer.Serialize(legacy));
+            Assert.That(roundTrip.Proxies[0].ProxyDns, Is.True);
+            roundTrip.Proxies[0].ProxyDns = false;
+            Assert.That(_serializer.Deserialize(_serializer.Serialize(roundTrip)).Proxies[0].ProxyDns, Is.False);
+        }
+
+        [Test]
         public void EveryCurrentPropertyRoundTrips()
         {
             var configuration = new ProxiFyreConfiguration

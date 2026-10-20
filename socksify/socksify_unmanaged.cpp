@@ -265,7 +265,8 @@ LONG_PTR socksify_unmanaged::add_socks5_proxy(
     const socks5_transport_mx transport,
     const std::string& tls_server_name,
     const std::string& tls_pinned_cert_sha256,
-    const bool tls_allow_invalid_certificate) const
+    const bool tls_allow_invalid_certificate,
+    const bool proxy_dns) const
 {
     using namespace std::string_literals;
     std::optional<std::pair<std::string, std::string>> cred{ std::nullopt };
@@ -327,7 +328,7 @@ LONG_PTR socksify_unmanaged::add_socks5_proxy(
     }
 
     if (const auto result = proxy_->add_socks5_proxy(
-        endpoint, protocols, cred, address_families, upstream_options, start); result)
+        endpoint, protocols, cred, address_families, upstream_options, start, proxy_dns); result)
     {
         return static_cast<LONG_PTR>(result.value());
     }

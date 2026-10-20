@@ -67,6 +67,7 @@ namespace proxy
         bool transport_supported{};             ///< the proxy carries this transport
         bool family_supported{};                ///< the proxy accepts destinations of this family
         std::optional<uint16_t> listener_port;  ///< local listener for this transport and family
+        bool proxy_dns{};                      ///< opt in to UDP destination port 53
     };
 
     /**
@@ -179,19 +180,25 @@ namespace proxy
      *
      * @param target_of size_t proxy index -> proxy_route_target for the transport and family
      *        being routed.
+     * @param dns_request Whether this is UDP port 53; the first matching rule must opt in.
      * @return proxy with the listener port; block when the matched proxy cannot carry the
      *         family or has no listener; none when nothing matches or the matched proxy does
      *         not carry the transport.
      */
     template <class TargetOf>
     [[nodiscard]] proxy_port_result select_proxy_port(const owner_match_rules& rules,
-        iphelper::network_process& process, TargetOf&& target_of)
+        iphelper::network_process& process, TargetOf&& target_of, const bool dns_request = false)
     {
         for (const auto& [proxy_id, process_pattern] : rules.proxy_to_names)
         {
             if (match_owner_to_app(process_pattern, process, rules))
             {
                 const proxy_route_target target = target_of(proxy_id);
+
+                // DNS disabled on the first matching rule stays direct. Do not fall
+                // through to a later rule or mark the owner's other UDP as bypassing.
+                if (dns_request && !target.proxy_dns)
+                    return {};
 
                 if (!target.transport_supported)
                     return {};
@@ -251,4 +258,18 @@ namespace proxy
 
         return result;
     }
+
+    /// DNS is destination-specific and must not consume or update a socket's
+    /// cached decision for all UDP. Ordinary UDP keeps the existing owner policy.
+    template <owner_family Family, class Select>
+    [[nodiscard]] proxy_port_result route_udp_owner(iphelper::network_process& process,
+        const bool dns_request, Select&& select)
+    {
+        if (process.excluded)
+            return {};
+        if (dns_request)
+            return select(true);
+        return route_owner<owner_transport::udp, Family>(process, [&] { return select(false); });
+    }
+
 }

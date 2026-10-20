@@ -227,6 +227,9 @@ namespace proxy
          */
         std::vector<supported_address_families> proxy_address_families_;
 
+        // UDP DNS opt-in, index-aligned with the proxy server vectors.
+        std::vector<bool> proxy_dns_;
+
         /**
          * @brief Maps proxy indexes to their corresponding process names (sorted by proxy ID).
          */
@@ -1208,6 +1211,7 @@ namespace proxy
          * @param address_families enum representing the destination address family/families to be proxied.
          * @param upstream_options transport and TLS settings for the upstream SOCKS5 connection.
          * @param start boolean flag to start the proxy server after creating it.
+         * @param proxy_dns opt in to forwarding UDP port 53 for applications matching this proxy.
          * @return an optional value containing the index of the added proxy server if successful, std::nullopt otherwise.
          */
         std::optional<size_t> add_socks5_proxy(
@@ -1216,7 +1220,8 @@ namespace proxy
             const std::optional<std::pair<std::string, std::string>>& cred_pair,
             const supported_address_families address_families = supported_address_families::all,
             socks5_upstream_options upstream_options = {},
-            const bool start = false
+            const bool start = false,
+            const bool proxy_dns = false
         )
         {
             using namespace std::string_literals;
@@ -1420,6 +1425,7 @@ namespace proxy
                     proxy_servers_v6_.reserve(proxy_servers_v6_.size() + 1);
                     proxy_protocols_.reserve(proxy_protocols_.size() + 1);
                     proxy_address_families_.reserve(proxy_address_families_.size() + 1);
+                    proxy_dns_.reserve(proxy_dns_.size() + 1);
                 }
 
                 // Install PASS filters only for upstream addresses selected by
@@ -1536,6 +1542,7 @@ namespace proxy
                     std::move(socks_tcp_proxy_server_v6), std::move(socks_udp_proxy_server_v6));
                 proxy_protocols_.push_back(protocols);
                 proxy_address_families_.push_back(address_families);
+                proxy_dns_.push_back(proxy_dns);
 
                 return proxy_servers_.size() - 1; // Return the index of the added proxy server
             }
@@ -1772,6 +1779,7 @@ namespace proxy
         proxy_route_target route_target(const size_t proxy_id) const
         {
             proxy_route_target target;
+            target.proxy_dns = proxy_id < proxy_dns_.size() && proxy_dns_[proxy_id];
 
             target.transport_supported = proxy_id < proxy_protocols_.size() &&
                 (Transport == owner_transport::tcp
@@ -1818,14 +1826,15 @@ namespace proxy
          * select_proxy_port() for the outcomes.
          */
         template <owner_transport Transport, owner_family Family>
-        proxy_port_result get_proxy_port(const std::shared_ptr<iphelper::network_process>& process)
+        proxy_port_result get_proxy_port(const std::shared_ptr<iphelper::network_process>& process,
+            const bool dns_request = false)
         {
             if (!process) return {};
 
             std::shared_lock lock(lock_);
 
             return select_proxy_port(match_rules(), *process,
-                [this](const size_t proxy_id) { return route_target<Transport, Family>(proxy_id); });
+                [this](const size_t proxy_id) { return route_target<Transport, Family>(proxy_id); }, dns_request);
         }
 
         /**
@@ -1928,13 +1937,6 @@ namespace proxy
             const auto* const udp_header = reinterpret_cast<udphdr_ptr>(reinterpret_cast<PUCHAR>(ip_header)
                 + sizeof(DWORD) * ip_header->ip_hl);
 
-            // If the destination port is 53 (DNS), allow the packet to pass through without redirection
-            // TODO: We might consider adding a DNS proxy in the future
-            if (ntohs(udp_header->th_dport) == 53)
-            {
-                return packet_filter::packet_action{ packet_filter::packet_action::action_type::pass };
-            }
-
             // If the packet is from a known proxy port, process for server-to-client redirection
             if (is_udp_proxy_port(ntohs(udp_header->th_sport)))
             {
@@ -1965,9 +1967,12 @@ namespace proxy
                 }
             }
 
-            // Excluded or bypassing owners pass; a selection of none marks the owner as bypassing.
-            const auto proxy_lookup = route_owner<owner_transport::udp, owner_family::ipv4>(*process,
-                [&] { return get_proxy_port<owner_transport::udp, owner_family::ipv4>(process); });
+            // DNS bypass is per destination; it must not cache a bypass for all UDP.
+            const auto proxy_lookup = route_udp_owner<owner_family::ipv4>(*process,
+                ntohs(udp_header->th_dport) == 53,
+                [&](const bool dns_request) {
+                    return get_proxy_port<owner_transport::udp, owner_family::ipv4>(process, dns_request);
+                });
 
             if (proxy_lookup.action == proxy_port_action::proxy)
             {
@@ -2199,13 +2204,6 @@ namespace proxy
 
             const auto* const udp_header = static_cast<udphdr_ptr>(transport);
 
-            // If the destination port is 53 (DNS), allow the packet to pass through
-            // without redirection (mirrors the IPv4 path).
-            if (ntohs(udp_header->th_dport) == 53)
-            {
-                return packet_filter::packet_action{ packet_filter::packet_action::action_type::pass };
-            }
-
             // If the packet is from a known proxy port, process for server-to-client redirection
             if (is_udp_proxy_port_v6(ntohs(udp_header->th_sport)))
             {
@@ -2236,9 +2234,12 @@ namespace proxy
                 }
             }
 
-            // Excluded or bypassing owners pass; a selection of none marks the owner as bypassing.
-            const auto proxy_lookup = route_owner<owner_transport::udp, owner_family::ipv6>(*process,
-                [&] { return get_proxy_port<owner_transport::udp, owner_family::ipv6>(process); });
+            // DNS bypass is per destination; it must not cache a bypass for all UDP.
+            const auto proxy_lookup = route_udp_owner<owner_family::ipv6>(*process,
+                ntohs(udp_header->th_dport) == 53,
+                [&](const bool dns_request) {
+                    return get_proxy_port<owner_transport::udp, owner_family::ipv6>(process, dns_request);
+                });
 
             if (proxy_lookup.action == proxy_port_action::proxy)
             {

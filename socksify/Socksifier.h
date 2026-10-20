@@ -313,6 +313,11 @@ namespace Socksifier
             SupportedAddressFamiliesEnum addressFamilies, Socks5TransportEnum transport, String^ tlsServerName,
             String^ tlsPinnedSha256, bool tlsAllowInvalidCertificate, bool start);
 
+        /// <summary>Adds a SOCKS5 proxy with optional UDP DNS forwarding; older overloads keep it disabled.</summary>
+        IntPtr AddSocks5Proxy(String^ endpoint, String^ username, String^ password, SupportedProtocolsEnum protocols,
+            SupportedAddressFamiliesEnum addressFamilies, Socks5TransportEnum transport, String^ tlsServerName,
+            String^ tlsPinnedSha256, bool tlsAllowInvalidCertificate, bool start, bool proxyDns);
+
         /// <summary>
         /// Adds a SOCKS5 proxy to the gateway with both IPv4 and IPv6 destinations enabled.
         /// </summary>

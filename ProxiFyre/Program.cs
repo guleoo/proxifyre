@@ -131,7 +131,8 @@ namespace ProxiFyre
                     appSettings.EffectiveTlsServerName,
                     ConfigurationNormalizer.NormalizeFingerprint(appSettings.TlsPinnedSha256),
                     appSettings.TlsAllowInvalidCertificate,
-                    true);
+                    true,
+                    appSettings.ProxyDns);
 
                 if (proxy.ToInt64() == -1)
                 {
@@ -153,7 +154,7 @@ namespace ProxiFyre
                     // Associate the defined application names to the proxies
                     if (_socksify.AssociateProcessNameToProxy(appName, proxy) && _logLevel >= LogLevel.Info)
                         LoggerInstance.Info(
-                            $"Successfully associated {appName} to {appSettings.Socks5ProxyEndpoint} {transport} proxy with protocols {protocols} and address families {addressFamilies}!");
+                            $"Successfully associated {appName} to {appSettings.Socks5ProxyEndpoint} {transport} proxy with protocols {protocols} and address families {addressFamilies}; UDP DNS proxying: {appSettings.ProxyDns}!");
             }
 
             foreach (var excludedEntry in serviceSettings.Excludes)

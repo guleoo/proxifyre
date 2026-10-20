@@ -70,6 +70,7 @@ Process ownership lookup is best effort for a standard user. ProxiFyre can route
 | `tlsServerName` | TLS SNI and certificate-validation name. Defaults to the endpoint hostname. |
 | `tlsPinnedSha256` | Optional SHA-256 fingerprint of the expected leaf certificate. |
 | `tlsAllowInvalidCertificate` | Disables normal certificate validation. Default: `false`; avoid this without a pin. |
+| `proxyDns` | Opt in to forwarding matching applications' UDP port 53 traffic through SOCKS5. Default: `false`. Requires UDP support. |
 | `supportedProtocols` | `TCP`, `UDP`, or both. Omitted means both. |
 | `supportedAddressFamilies` | `IPv4`, `IPv6`, or both. Omitted means both. |
 
@@ -107,6 +108,25 @@ IPv6 destination routing also requires:
 - an upstream proxy reachable through IPv4. The endpoint itself must be an IPv4 literal or a hostname with an A record; IPv6-literal and AAAA-only upstreams are not supported.
 
 Fragmented IPv6 datagrams are passed through directly to avoid rewriting an incomplete packet. Applications that emit oversized fragmented UDP datagrams can therefore bypass the proxy; TCP and path-MTU-aware UDP such as normal QUIC traffic are unaffected.
+
+## DNS forwarding
+
+Ordinary DNS queries normally use UDP port 53. By default ProxiFyre leaves these
+packets direct, even when a proxy rule supports UDP. Set `"proxyDns": true` on a
+rule to forward its matching applications' UDP DNS traffic through that rule's
+SOCKS5 proxy. The SOCKS5 server and its upstream must support UDP forwarding.
+
+The first matching rule decides; a later opt-in rule does not override an earlier
+rule with DNS proxying disabled. Exclusions, LAN bypass, protocol selections, and
+destination address-family restrictions still apply. Queries sent to a LAN DNS
+server remain direct when `bypassLan` is enabled. For Docker Desktop, use a public
+resolver such as `1.1.1.1` and enable `proxyDns` on the rule matching
+`com.docker.backend.exe`.
+
+This option preserves the requested DNS destination; it does not select a DNS
+server, configure applications' resolvers, or turn ordinary DNS into DoH/DoT.
+TCP DNS continues to follow the existing TCP routing behavior. DNS forwarding
+does not change the routing decision for other UDP traffic from the same socket.
 
 ## LAN bypass
 

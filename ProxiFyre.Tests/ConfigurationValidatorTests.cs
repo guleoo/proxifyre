@@ -11,6 +11,24 @@ namespace ProxiFyre.Tests
         private readonly ConfigurationValidator _validator = new ConfigurationValidator();
 
         [Test]
+        public void DnsProxyRequiresUdpButAcceptsLegacyProtocolDefaults()
+        {
+            var rule = TestModels.ValidRule();
+            rule.ProxyDns = true;
+            rule.SupportedProtocols = new List<string> { "TCP" };
+            HasIssue(_validator.ValidateRule(rule), "DNS_REQUIRES_UDP", ValidationSeverity.Error);
+            foreach (var protocols in new[] { null, new List<string>(), new List<string> { "udp" },
+                new List<string> { "TCP", "UDP" } })
+            {
+                rule.SupportedProtocols = protocols;
+                Assert.That(_validator.ValidateRule(rule).HasErrors, Is.False);
+            }
+            rule.ProxyDns = false;
+            rule.SupportedProtocols = new List<string> { "TCP" };
+            Assert.That(_validator.ValidateRule(rule).HasErrors, Is.False);
+        }
+
+        [Test]
         public void MissingAndEmptyProxyListsHaveDistinctErrors()
         {
             var missing = TestModels.ValidConfiguration();

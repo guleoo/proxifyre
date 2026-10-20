@@ -77,6 +77,10 @@ namespace ProxiFyre.Configuration
         [JsonProperty("tlsAllowInvalidCertificate")]
         public bool TlsAllowInvalidCertificate { get; set; }
 
+        /// <summary>Opt in to forwarding UDP port 53 through this rule's SOCKS5 proxy.</summary>
+        [JsonProperty("proxyDns")]
+        public bool ProxyDns { get; set; }
+
         [JsonProperty("supportedProtocols", NullValueHandling = NullValueHandling.Ignore)]
         public List<string> SupportedProtocols { get; set; }
 

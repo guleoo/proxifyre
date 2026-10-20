@@ -179,6 +179,12 @@ namespace ProxiFyre.Configuration
 
             ValidateApplications(rule.AppNames, prefix, index, issues);
             ValidateProtocols(rule.SupportedProtocols, prefix, index, issues);
+            if (rule.ProxyDns && rule.SupportedProtocols != null && rule.SupportedProtocols.Count > 0 &&
+                !rule.SupportedProtocols.Any(value => string.Equals(value, "UDP", StringComparison.OrdinalIgnoreCase)))
+            {
+                issues.Add(Error("DNS_REQUIRES_UDP", "DNS proxying requires UDP in supportedProtocols.",
+                    prefix + ".proxyDns", index));
+            }
             ValidateAddressFamilies(rule.SupportedAddressFamilies, prefix, index, issues);
             ValidateTransportAndTls(rule, prefix, index, issues);
         }

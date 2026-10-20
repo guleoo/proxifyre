@@ -34,6 +34,7 @@ namespace
         uint16_t udp4_port{ 40002 };
         uint16_t tcp6_port{ 40003 };
         uint16_t udp6_port{ 40004 };
+        bool proxy_dns{ false };
     };
 
     struct routing_config
@@ -56,21 +57,31 @@ namespace
             constexpr bool v4 = Family == owner_family::ipv4;
             const uint16_t port = tcp ? (v4 ? p.tcp4_port : p.tcp6_port) : (v4 ? p.udp4_port : p.udp6_port);
             return { tcp ? p.tcp : p.udp, v4 ? p.ipv4 : p.ipv6,
-                port ? std::optional<uint16_t>{ port } : std::nullopt };
+                port ? std::optional<uint16_t>{ port } : std::nullopt, p.proxy_dns };
         }
 
         /// The handler's owner decision for one packet of @p owner.
         template <owner_transport Transport, owner_family Family>
-        [[nodiscard]] proxy_port_result route(const process_ptr& owner) const
+        [[nodiscard]] proxy_port_result route(const process_ptr& owner, const bool dns_request = false) const
         {
             EXPECT_TRUE(owner);
             if (!owner)
                 return {};
-            return proxy::route_owner<Transport, Family>(*owner, [&]
+            if constexpr (Transport == owner_transport::udp)
             {
-                return proxy::select_proxy_port(rules(), *owner,
-                    [this](const size_t id) { return target<Transport, Family>(id); });
-            });
+                return proxy::route_udp_owner<Family>(*owner, dns_request, [&](const bool dns) {
+                    return proxy::select_proxy_port(rules(), *owner,
+                        [this](const size_t id) { return target<Transport, Family>(id); }, dns);
+                });
+            }
+            else
+            {
+                return proxy::route_owner<Transport, Family>(*owner, [&]
+                {
+                    return proxy::select_proxy_port(rules(), *owner,
+                        [this](const size_t id) { return target<Transport, Family>(id); });
+                });
+            }
         }
     };
 
@@ -132,6 +143,55 @@ namespace
     };
 
     // ------------------------------------------------------------------------------------
+
+    TEST_F(OwnerRoutingPolicyTest, DnsOptInRespectsFirstMatchAndDoesNotPoisonOtherUdp)
+    {
+        os().images[3000] = image(L"APP.EXE");
+        add_everywhere(3000, 1000);
+        lookup_v4 l4;
+        lookup_v6 l6;
+        routing_config config;
+        config.proxies.push_back({});
+        config.proxies.push_back({});
+        config.proxies[1].proxy_dns = true;
+        config.proxy_to_names.emplace(0, L"APP.EXE");
+        config.proxy_to_names.emplace(1, L"");
+        const auto v4 = udp4(l4, 1000);
+        const auto v6 = udp6(l6, 1000);
+        ASSERT_TRUE(v4 && v6);
+        const auto dns4 = [&] {
+            return config.route<udp, ipv4>(v4, true);
+        };
+        const auto dns6 = [&] {
+            return config.route<udp, ipv6>(v6, true);
+        };
+        // The first rule's default false must not fall through to the opt-in catch-all.
+        expect_route(dns4(), proxy_port_action::none);
+        expect_route(dns6(), proxy_port_action::none);
+        expect_untouched(v4);
+        expect_untouched(v6);
+        expect_route(config.route<udp, ipv4>(v4), proxy_port_action::proxy, 40002);
+        expect_route(config.route<udp, ipv6>(v6), proxy_port_action::proxy, 40004);
+        // A preassigned ordinary UDP port must not override the rule's DNS opt-in.
+        v4->udp_proxy_port = 49999;
+        expect_route(dns4(), proxy_port_action::none);
+        config.proxies[0].proxy_dns = true;
+        expect_route(dns4(), proxy_port_action::proxy, 40002);
+        expect_route(dns6(), proxy_port_action::proxy, 40004);
+        config.proxies[0].ipv6 = false;
+        expect_route(dns6(), proxy_port_action::block);
+        config.proxies[0].proxy_dns = false;
+        expect_route(dns6(), proxy_port_action::none);
+        config.proxies[0].proxy_dns = true;
+        config.proxies[0].udp = false;
+        expect_route(dns4(), proxy_port_action::none);
+        config.proxies[0].udp = true;
+        config.proxies[0].udp4_port = 0;
+        expect_route(dns4(), proxy_port_action::block);
+        config.excluded.emplace_back(L"APP.EXE");
+        expect_route(dns4(), proxy_port_action::none);
+        expect_route(dns6(), proxy_port_action::none);
+    }
 
     TEST_F(OwnerRoutingPolicyTest, EachConnectionOfAnIdentityCarriesItsOwnDecision)
     {

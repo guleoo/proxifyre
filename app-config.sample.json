@@ -11,6 +11,7 @@
             "tlsServerName": "",
             "tlsPinnedSha256": "",
             "tlsAllowInvalidCertificate": false,
+            "proxyDns": false,
             "supportedProtocols": ["TCP", "UDP"],
             "supportedAddressFamilies": ["IPv4", "IPv6"]
         }

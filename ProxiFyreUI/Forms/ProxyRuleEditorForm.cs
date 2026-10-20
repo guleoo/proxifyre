@@ -87,6 +87,7 @@ namespace ProxiFyreUI.Forms
             tlsServerNameTextBox.Text = rule.TlsServerName ?? string.Empty;
             tlsPinTextBox.Text = rule.TlsPinnedSha256 ?? string.Empty;
             allowInvalidCertificateCheckBox.Checked = rule.TlsAllowInvalidCertificate;
+            proxyDnsCheckBox.Checked = rule.ProxyDns;
             _confirmedInvalidCertificate = InvalidCertificateConfirmationPolicy.IsPersistedSelectionConfirmed(
                 rule.Socks5Transport, rule.TlsAllowInvalidCertificate);
             UpdateTransportControls();
@@ -113,6 +114,7 @@ namespace ProxiFyreUI.Forms
             candidate.TlsServerName = EmptyToNull(tlsServerNameTextBox.Text);
             candidate.TlsPinnedSha256 = EmptyToNull(ConfigurationNormalizer.NormalizeFingerprint(tlsPinTextBox.Text));
             candidate.TlsAllowInvalidCertificate = allowInvalidCertificateCheckBox.Checked;
+            candidate.ProxyDns = proxyDnsCheckBox.Checked;
             candidate.SupportedProtocols = new List<string>();
             if (tcpCheckBox.Checked) candidate.SupportedProtocols.Add("TCP");
             if (udpCheckBox.Checked) candidate.SupportedProtocols.Add("UDP");
@@ -208,6 +210,9 @@ namespace ProxiFyreUI.Forms
             {
                 var validation = _validator.ValidateRule(BuildCandidate(), _ruleIndex);
                 blocking |= validation.HasErrors;
+                var dnsIssue = validation.Issues.FirstOrDefault(issue => issue.Code == "DNS_REQUIRES_UDP");
+                if (dnsIssue != null)
+                    errorProvider.SetError(proxyDnsCheckBox, dnsIssue.Message);
                 warnings.AddRange(validation.Issues.Select(issue => issue.Severity + ": " + issue.Message));
 
                 var usernameLengthIssue = validation.Issues.FirstOrDefault(
